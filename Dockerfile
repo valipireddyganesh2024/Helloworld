@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y nginx && \
 WORKDIR /usr/share/nginx/html
 
 # Copy the "helloworld" file into the container
-COPY helloworld /usr/share/nginx/html/helloworld
+COPY helloworld.iml /usr/share/nginx/html/helloworld
 
 # Expose Nginx default port
 EXPOSE 80
