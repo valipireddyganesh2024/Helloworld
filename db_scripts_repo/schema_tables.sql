@@ -1,33 +1,23 @@
--- Create schemas
-CREATE SCHEMA IF NOT EXISTS sales;
-CREATE SCHEMA IF NOT EXISTS hr;
+-- 1️⃣ Create a new schema
+CREATE SCHEMA IF NOT EXISTS new_schema AUTHORIZATION postgres;
 
--- Create tables in sales schema
-CREATE TABLE IF NOT EXISTS sales.customers (
-    customer_id SERIAL PRIMARY KEY,
+-- 2️⃣ Switch to the new schema
+SET search_path TO new_schema;
+
+-- 3️⃣ Create a sample table
+CREATE TABLE IF NOT EXISTS employees (
+    id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS sales.orders (
-    order_id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES sales.customers(customer_id),
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total_amount DECIMAL(10,2) NOT NULL
-);
+-- 4️⃣ Insert sample data
+INSERT INTO employees (name, department, salary) VALUES
+('Alice Johnson', 'HR', 60000),
+('Bob Smith', 'IT', 75000),
+('Charlie Davis', 'Finance', 70000);
 
--- Create tables in hr schema
-CREATE TABLE IF NOT EXISTS hr.employees (
-    employee_id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    department VARCHAR(50),
-    hire_date DATE NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS hr.salaries (
-    salary_id SERIAL PRIMARY KEY,
-    employee_id INT REFERENCES hr.employees(employee_id),
-    salary DECIMAL(10,2) NOT NULL,
-    effective_date DATE NOT NULL
-);
+-- 5️⃣ Verify inserted data
+SELECT * FROM employees;
