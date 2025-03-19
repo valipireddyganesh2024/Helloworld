@@ -7,7 +7,7 @@ DB_USER="postgres"
 DB_PASS="postgres123"
 
 # List of databases
-DATABASES=("database_dev")
+DATABASES=("database_qa")
 
 # GitHub repository details
 GIT_REPO="https://github.com/valipireddyganesh2024/Helloworld.git"
