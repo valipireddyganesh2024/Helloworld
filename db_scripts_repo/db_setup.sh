@@ -12,7 +12,7 @@ DATABASES=("database_dev")
 # GitHub repository details
 GIT_REPO="https://github.com/valipireddyganesh2024/Helloworld.git"
 GIT_BRANCH="master"
-SQL_FILE="schema_tables.sql"  # Change this if your SQL file has a different name
+SQL_FILE="db_scripts_repo/schema_tables.sql"  # Change this if your SQL file has a different name
 CLONE_DIR="db_scripts_repo"
 
 # Log files
