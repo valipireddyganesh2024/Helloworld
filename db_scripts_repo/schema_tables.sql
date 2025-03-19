@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS company.aeroplanes (
 -- 6️⃣ Create table for School
 CREATE TABLE IF NOT EXISTS company.schools (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100 NOT NULL,
     location VARCHAR(100) NOT NULL
 );
 
