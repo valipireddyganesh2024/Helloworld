@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         choice(name: 'TARGET_DB', choices: ['database_dev', 'database_qa', 'database_prod'], description: 'Select Target Database')
-		choice(name: 'DB_HOST', choices: ['database-instance.c0fe60owuebl.us-east-1.rds.amazonaws.com', 'database-1.c0fe60owuebl.us-east-1.rds.amazonaws.com'], description: 'Select DB_HOST')
+	choice(name: 'DB_HOST', choices: ['database-instance.c0fe60owuebl.us-east-1.rds.amazonaws.com', 'database-1.c0fe60owuebl.us-east-1.rds.amazonaws.com'], description: 'Select DB_HOST')
     }
 
     environment {
@@ -42,9 +42,9 @@ pipeline {
         stage('Check Database Connection') {
             steps {
                 script {
-                    echo "Checking database connection to ${TARGET_DB}..."
+                    echo "Checking database connection to ${params.TARGET_DB}..."
                     def status = sh(
-                        script: "PGPASSWORD=${DB_PASS} psql -h ${DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d postgres -c \"SELECT datname FROM pg_database;\"",
+                        script: "PGPASSWORD=${DB_PASS} psql -h ${params.DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d postgres -c \"SELECT datname FROM pg_database;\"",
                         returnStatus: true
                     )
                     if (status != 0) {
@@ -61,7 +61,7 @@ pipeline {
                     echo "Executing SQL script in ${TARGET_DB}"
                     def status = sh(
                         script: """
-                            PGPASSWORD=${DB_PASS} psql -h ${DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d ${TARGET_DB} -v ON_ERROR_STOP=0 -f ${CLONE_DIR}/${SQL_FILE} 2> ${ERROR_LOG}
+                            PGPASSWORD=${DB_PASS} psql -h ${params.DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d ${TARGET_DB} -v ON_ERROR_STOP=0 -f ${CLONE_DIR}/${SQL_FILE} 2> ${ERROR_LOG}
                         """,
                         returnStatus: true
                     )
