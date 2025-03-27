@@ -2,74 +2,86 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'TARGET_DB', choices: ['database_dev', 'database_qa', 'database_prod'], description: 'Select Target Database')
-	choice(name: 'DB_HOST', choices: ['database-instance.c0fe60owuebl.us-east-1.rds.amazonaws.com', 'database-1.c0fe60owuebl.us-east-1.rds.amazonaws.com'], description: 'Select DB_HOST')
+        choice(name: 'DB_HOST', choices: ['database-1.c0fe60owuebl.us-east-1.rds.amazonaws.com', 'database-prod.c0fe60owuebl.us-east-1.rds.amazonaws.com'], description: 'Select the Database Host')
+        choice(name: 'TARGET_DB', choices: ['database_qa', 'database_dev', 'database_prod'], description: 'Select the Target Database')
     }
 
     environment {
         DB_PORT = "5432"
         GIT_REPO = "https://github.com/valipireddyganesh2024/Helloworld.git"
         GIT_BRANCH = "master"
-        SQL_FILE = "db_scripts_repo/schema_tables.sql"
         CLONE_DIR = "db_scripts_repo"
-        ERROR_LOG = "error_log.txt"
     }
 
     stages {
-        stage('Retrieve Credentials') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'rds-db-credentials', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASS')]) {
-                        echo "Database credentials retrieved successfully."
-                    }
-                }
-            }
-        }
-
         stage('Clone GitHub Repository') {
             steps {
                 script {
                     echo "Cloning GitHub repository..."
-                    sh "[ -d ${CLONE_DIR} ] && rm -rf ${CLONE_DIR} || echo 'No previous directory to remove'"
+                    sh "rm -rf ${CLONE_DIR}"
                     sh "git clone -b ${GIT_BRANCH} ${GIT_REPO} ${CLONE_DIR}"
-                    if (!fileExists("${CLONE_DIR}/${SQL_FILE}")) {
-                        error("SQL file not found in repository. Stopping execution.")
+                }
+            }
+        }
+
+        stage('Find Latest SQL File for Today') {
+            steps {
+                script {
+                    def todayDate = new Date().format('dd-MM-yyyy')
+                    echo "Searching for today's SQL file: schema_tables_${todayDate}.sql"
+
+                    def sqlFile = sh(script: """
+                        find ${CLONE_DIR} -type f -name "schema_tables_${todayDate}.sql" | head -n 1
+                    """, returnStdout: true).trim()
+
+                    if (!sqlFile) {
+                        error("No SQL file found for today's date: ${todayDate}. Stopping execution.")
                     }
+
+                    echo "Using SQL file: ${sqlFile}"
+                    env.SQL_FILE = sqlFile
                 }
             }
         }
 
         stage('Check Database Connection') {
             steps {
-                script {
-                    echo "Checking database connection to ${params.TARGET_DB}..."
-                    def status = sh(
-                        script: "PGPASSWORD=${DB_PASS} psql -h ${params.DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d postgres -c \"SELECT datname FROM pg_database;\"",
-                        returnStatus: true
-                    )
-                    if (status != 0) {
-                        error("Database connection failed. Stopping execution.")
+                withCredentials([usernamePassword(credentialsId: 'rds-db-credentials', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASS')]) {
+                    script {
+                        echo "Checking database connection..."
+                        def status = sh(
+                            script: """
+                                export PGPASSWORD=\$DB_PASS
+                                psql -h ${params.DB_HOST} -U \$DB_USER -p ${DB_PORT} -d postgres -c "SELECT datname FROM pg_database;"
+                            """,
+                            returnStatus: true
+                        )
+                        if (status != 0) {
+                            error("Database connection failed. Stopping execution.")
+                        }
+                        echo "Database is connected!"
                     }
-                    echo "Database is connected!"
                 }
             }
         }
 
         stage('Execute SQL in Target Database') {
             steps {
-                script {
-                    echo "Executing SQL script in ${TARGET_DB}"
-                    def status = sh(
-                        script: """
-                            PGPASSWORD=${DB_PASS} psql -h ${params.DB_HOST} -U ${DB_USER} -p ${DB_PORT} -d ${TARGET_DB} -v ON_ERROR_STOP=0 -f ${CLONE_DIR}/${SQL_FILE} 2> ${ERROR_LOG}
-                        """,
-                        returnStatus: true
-                    )
-
-                    if (status != 0) {
-                        echo "Some SQL statements failed. Review ${ERROR_LOG} for details."
-                    } else {
-                        echo "Successfully executed schemas and tables in ${TARGET_DB}."
+                withCredentials([usernamePassword(credentialsId: 'rds-db-credentials', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASS')]) {
+                    script {
+                        echo "Executing SQL script in ${params.TARGET_DB} using file: ${env.SQL_FILE}"
+                        def status = sh(
+                            script: """
+                                export PGPASSWORD=\$DB_PASS
+                                psql -h ${params.DB_HOST} -U \$DB_USER -p ${DB_PORT} -d ${params.TARGET_DB} -f ${env.SQL_FILE}
+                            """,
+                            returnStatus: true
+                        )
+                        if (status != 0) {
+                            error("Failed to execute SQL script: ${env.SQL_FILE}")
+                        } else {
+                            echo "Successfully executed ${env.SQL_FILE} in ${params.TARGET_DB}."
+                        }
                     }
                 }
             }
@@ -79,12 +91,6 @@ pipeline {
     post {
         always {
             echo "Pipeline execution completed!"
-            script {
-                if (fileExists(ERROR_LOG)) {
-                    echo "Displaying errors from ${ERROR_LOG}:"
-                    sh "cat ${ERROR_LOG}"
-                }
-            }
         }
     }
 }
