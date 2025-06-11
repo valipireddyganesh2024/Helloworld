@@ -1,0 +1,42 @@
+properties([
+  parameters([
+    [$class: 'CascadeChoiceParameter',
+      choiceType: 'PT_SINGLE_SELECT',
+      name: 'YAML_FILE',
+      description: 'Select a YAML file from /root/demo/',
+      filterable: true,
+      randomName: 'choice-parameter-123',
+      script: [
+        $class: 'GroovyScript',
+        fallbackScript: [classpath: [], sandbox: false, script: 'return ["Could not list files"]'],
+        script: [
+          classpath: [],
+          sandbox: false,
+          script: '''
+            def dir = new File("/root/demo/")
+            if (dir.exists()) {
+              return dir.listFiles()
+                        .findAll { it.name.endsWith(".yaml") || it.name.endsWith(".yml") }
+                        .collect { it.name }
+            } else {
+              return ["No files found"]
+            }
+          '''
+        ]
+      ]
+    ]
+  ])
+])
+
+pipeline {
+  agent any
+  stages {
+    stage('Show Selected File') {
+      steps {
+        script {
+          echo "Selected YAML file: ${params.YAML_FILE}"
+        }
+      }
+    }
+  }
+}
